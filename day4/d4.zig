@@ -36,22 +36,19 @@ pub fn main() !void {
     // of numbers we have.
     // Represent the numbers we have using a bitset.
     var winning_numbers = std.ArrayList(u7).init(arena.allocator());
-
     var number_set: u128 = 0;
 
-    var it = std.mem.split(u8, line, " ");
-    var index: i32 = -1;
+    var it = std.mem.split(u8, line[9..line.len], " ");
+    var separator_found: bool = false;
     while (it.next()) |tok| {
       if (tok.len == 0) continue;
-      index += 1;
-      if (index < 2) {
-        continue;
-      }
-      else if (index < 12) {
-        try winning_numbers.append(try std.fmt.parseInt(u7, tok, 10));
-      }
-      else if (index > 12) {
+      separator_found = separator_found or tok[0] == '|';
+      if (tok[0] == '|') continue;
+      if (separator_found) {
         number_set |= @as(u128, 1) << (try std.fmt.parseInt(u7, tok, 10));
+      }
+      else {
+        try winning_numbers.append(try std.fmt.parseInt(u7, tok, 10));
       }
     }
 
