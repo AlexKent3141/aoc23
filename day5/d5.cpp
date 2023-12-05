@@ -28,6 +28,20 @@ std::int64_t stage_input_for_output(
   return -1;
 }
 
+bool does_seed_exist(std::int64_t seed, const std::vector<std::int64_t>& seeds)
+{
+  for (std::size_t i = 0; i < seeds.size() / 2; i++)
+  {
+    std::int64_t upper = seeds[2*i] + seeds[2*i + 1];
+    if (seed < upper && seed >= seeds[2*i])
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 int main()
 {
   std::ifstream fs("input.txt");
@@ -91,12 +105,18 @@ int main()
 
   // P2.
   // Backtrack and see what the lowest possible location we can reach is.
+  // To make this more efficient:
+  // 1) Step up from 0 in increments of 1000 until we find a valid seed.
+  // 2) Now step downwards one at a time until we are no longer a valid seed.
+  // This only works because the minimum seed is in a "range" of at least 1000 seeds.
+  // Seems like quite a safe bet given the large seed ranges we're dealing with.
   std::int64_t test = -1;
+  std::int64_t step = 1000;
   bool solution_found = false;
   while (!solution_found)
   {
 next_try:
-    ++test;
+    test += step;
 
     auto current = test;
     for (int i = almanac.size() - 1; i >= 0; i--)
@@ -106,14 +126,17 @@ next_try:
     }
 
     // Is this in a seed range?
-    for (std::size_t i = 0; i < seeds.size() / 2; i++)
+    if (does_seed_exist(current, seeds))
     {
-      std::int64_t upper = seeds[2*i] + seeds[2*i + 1];
-      if (current < upper && current >= seeds[2*i])
+      if (step == 1000)
       {
-        solution_found = true;
-        break;
+        step = -1;
       }
+    }
+    else if (step == -1)
+    {
+      test -= step;
+      solution_found = true;
     }
   }
 
