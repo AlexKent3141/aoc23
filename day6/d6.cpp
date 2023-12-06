@@ -1,3 +1,4 @@
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -21,14 +22,20 @@ std::vector<int> parse_array(const std::string& line, std::int64_t& combined)
 
 std::int64_t count_winning_times(std::int64_t time, std::int64_t record)
 {
-  int count = 0;
-  for (std::int64_t hold = 0; hold < time; hold++)
+  // Need double precision for P2.
+  double td = time;
+  double rd = record;
+
+  double upper = 0.5 * (td + std::sqrt(td * td - 4 * rd));
+  double lower = 0.5 * (td - std::sqrt(td * td - 4 * rd));
+
+  // Annoying special case when the bounds are integers.
+  if (upper == std::round(upper) && lower == std::round(lower))
   {
-    std::int64_t score = hold * (time - hold);
-    if (score > record) ++count;
+    return upper - lower - 1;
   }
 
-  return count;
+  return std::floor(upper) - std::ceil(lower) + 1;
 }
 
 int main()
