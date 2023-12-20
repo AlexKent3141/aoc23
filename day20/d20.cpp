@@ -84,10 +84,10 @@ std::pair<int, int> push_button(const Node& button) {
     // Execute this pulse updating the state of the target.
     Node* target = p.target;
 
-    if (target->type == UNKNOWN) continue;
-
     // Update the latest state sent to this target.
     p.sender->update_state_for_target(target, p.is_high);
+
+    if (target->type == UNKNOWN) continue;
 
     switch (p.target->type) {
       case BR: {
@@ -188,6 +188,9 @@ int main() {
 
   int p1 = low_total * high_total;
   std::cout << "P1: " << p1 << "\n";
+
+  // Initialise the RX node.
+  Node* rx = &nodes[index_from_label("rx")];
 
   return EXIT_SUCCESS;
 }
