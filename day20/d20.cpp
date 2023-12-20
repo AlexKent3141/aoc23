@@ -178,8 +178,16 @@ int main() {
     std::cout << "\n";
   }
 
-  auto [low, high] = push_button(button);
-  std::cout << low << ", " << high << "\n";
+  int low_total = 0, high_total = 0;
+  for (int i = 0; i < 1000; i++) {
+    auto [low, high] = push_button(button);
+    low_total += low;
+    high_total += high;
+    std::cout << low << ", " << high << "\n";
+  }
+
+  int p1 = low_total * high_total;
+  std::cout << "P1: " << p1 << "\n";
 
   return EXIT_SUCCESS;
 }
