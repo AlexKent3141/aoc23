@@ -9,6 +9,7 @@
 #include <vector>
 
 enum NodeType {
+  UNKNOWN,
   BT,
   BR,
   FF,
@@ -22,6 +23,36 @@ struct Node {
   std::vector<Node*> inputs;
   std::vector<Node*> targets;
   bool ff_is_on;
+  std::vector<bool> latest_state_sent_to_target;
+
+  void update_state_for_target(const Node* target, bool is_high) {
+    for (std::size_t i = 0; i < targets.size(); i++) {
+      if (targets[i] == target) {
+        latest_state_sent_to_target[i] = is_high;
+        return;
+      }
+    }
+
+    std::abort();
+  }
+
+  bool state_for_target(const Node* target) const {
+    for (std::size_t i = 0; i < targets.size(); i++) {
+      if (targets[i] == target) {
+        return latest_state_sent_to_target[i];
+      }
+    }
+
+    std::abort();
+  }
+
+  bool all_inputs_high() const {
+    bool is_high = true;
+    for (std::size_t i = 0; i < inputs.size() && is_high; i++) {
+      is_high &= inputs[i]->state_for_target(this);
+    }
+    return is_high;
+  }
 };
 
 struct Pulse {
@@ -52,6 +83,12 @@ std::pair<int, int> push_button(const Node& button) {
 
     // Execute this pulse updating the state of the target.
     Node* target = p.target;
+
+    if (target->type == UNKNOWN) continue;
+
+    // Update the latest state sent to this target.
+    p.sender->update_state_for_target(target, p.is_high);
+
     switch (p.target->type) {
       case BR: {
         // Forward this pulse on to all of the broadcaster's targets.
@@ -71,9 +108,14 @@ std::pair<int, int> push_button(const Node& button) {
         break;
       }
       case CN: {
-        // Update the conjunction node's latest info for this input.
+        // Check whether all inputs are high.
+        bool pulse_state = !target->all_inputs_high();
+        for (Node* next_target : p.target->targets) {
+          todo.push_back(Pulse{target, next_target, pulse_state});
+        }
         break;
       }
+      case UNKNOWN:
       case BT: std::abort();
     }
   }
@@ -91,6 +133,7 @@ int main() {
 
   button.type = BT;
   button.targets.push_back(&broadcaster);
+  button.latest_state_sent_to_target.push_back(false);
 
   while (std::getline(fs, line)) {
     std::stringstream ss(line);
@@ -120,6 +163,7 @@ int main() {
     while (ss) {
       Node* target = &nodes[index_from_label(token.substr(0, 2))];
       n->targets.push_back(target);
+      n->latest_state_sent_to_target.push_back(false);
       target->inputs.push_back(n);
       ss >> token;
     }
@@ -133,6 +177,9 @@ int main() {
     }
     std::cout << "\n";
   }
+
+  auto [low, high] = push_button(button);
+  std::cout << low << ", " << high << "\n";
 
   return EXIT_SUCCESS;
 }
