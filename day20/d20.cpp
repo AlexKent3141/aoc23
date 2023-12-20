@@ -8,6 +8,9 @@
 #include <sstream>
 #include <vector>
 
+#include <functional>
+#include <optional>
+
 enum NodeType {
   UNKNOWN,
   BT,
@@ -24,6 +27,8 @@ struct Node {
   std::vector<Node*> targets;
   bool ff_is_on;
   std::vector<bool> latest_state_sent_to_target;
+
+  std::optional<std::function<void()>> all_inputs_on_callback;
 
   void update_state_for_target(const Node* target, bool is_high) {
     for (std::size_t i = 0; i < targets.size(); i++) {
@@ -52,6 +57,16 @@ struct Node {
       is_high &= inputs[i]->state_for_target(this);
     }
     return is_high;
+  }
+
+  int all_inputs_as_int() const {
+    int total = 0;
+    for (std::size_t i = 0; i < inputs.size(); i++) {
+      if (inputs[i]->state_for_target(this)) {
+        total |= (1 << i);
+      }
+    }
+    return total;
   }
 };
 
@@ -110,6 +125,11 @@ std::pair<int, int> push_button(const Node& button) {
       case CN: {
         // Check whether all inputs are high.
         bool pulse_state = !target->all_inputs_high();
+
+        if (!pulse_state && target->all_inputs_on_callback) {
+          (*target->all_inputs_on_callback)();
+        }
+
         for (Node* next_target : p.target->targets) {
           todo.push_back(Pulse{target, next_target, pulse_state});
         }
@@ -134,6 +154,10 @@ int main() {
   button.type = BT;
   button.targets.push_back(&broadcaster);
   button.latest_state_sent_to_target.push_back(false);
+
+  // Initialise the RX node.
+  Node* rx = &nodes[index_from_label("rx")];
+  rx->label = "rx";
 
   while (std::getline(fs, line)) {
     std::stringstream ss(line);
@@ -189,8 +213,53 @@ int main() {
   int p1 = low_total * high_total;
   std::cout << "P1: " << p1 << "\n";
 
-  // Initialise the RX node.
-  Node* rx = &nodes[index_from_label("rx")];
+  // Clear the stored states.
+  for (Node& n : nodes) {
+    if (!n.populated) continue;
+    n.ff_is_on = false;
+    for (std::size_t i = 0; i < n.latest_state_sent_to_target.size(); i++) {
+      n.latest_state_sent_to_target[i] = false;
+    }
+  }
+
+  // Set the input for rx to be high initially.
+  rx->inputs[0]->latest_state_sent_to_target[0] = true;
+
+  // The input to rx is a conjunction node, so the problem can be reinterpreted as: when do
+  // all of the inputs to the parent node come on?
+  // Maybe there's some cyclic behaviour here.
+  Node* test = &nodes[index_from_label("mt")];
+
+  // Answer: I've checked the periods with which the nodes zq, kx, zd, and mt have all of their inputs set
+  // high, which is the state when rx will receive a low signal.
+  // These periods are all primes, so we can just multiply them together to get the answer:
+  // 3931*3907*4021*3911
+  // Some manual graph parsing was required so maybe not one I can fully automate (will try and expand the
+  // solution a bit).
+
+  bool all_inputs_on = false;
+
+  const auto all_inputs_on_detected = [&all_inputs_on] () { all_inputs_on = true; };
+  test->all_inputs_on_callback = all_inputs_on_detected;
+
+  int num_presses = 0;
+
+  while (rx->inputs[0]->latest_state_sent_to_target[0]) {
+    push_button(button);
+    ++num_presses;
+
+    // When are all of the inputs on?
+    if (all_inputs_on) {
+      std::cout << "All high at: " << num_presses << std::endl;
+      all_inputs_on = false;
+    }
+
+    if (num_presses % 1000000 == 0) {
+      std::cout << "Presses: " << num_presses << std::endl;
+    }
+  }
+
+  std::cout << "P2: " << num_presses << "\n";
 
   return EXIT_SUCCESS;
 }
