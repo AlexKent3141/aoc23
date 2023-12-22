@@ -53,11 +53,16 @@ Block::Block(const Point& end1, const Point& end2) {
 class Tetris {
 public:
   Tetris(const std::vector<Block>&);
+  Tetris(const Tetris&);
 
-  void gravity();
+  int gravity();
+  void remove_block(int);
+
   int count_safe_disintegrations() const;
+  int count_total_chain_reactions() const;
 
 private:
+  int removed_id_;
   std::vector<Block> blocks_;
 
   // 2D grid of stacks.
@@ -66,7 +71,7 @@ private:
 };
 
 Tetris::Tetris(const std::vector<Block>& blocks)
-  : blocks_(blocks) {
+  : removed_id_(-1), blocks_(blocks) {
 
   std::sort(
     blocks_.begin(),
@@ -88,7 +93,20 @@ Tetris::Tetris(const std::vector<Block>& blocks)
   }
 }
 
-void Tetris::gravity() {
+Tetris::Tetris(const Tetris& other)
+  : removed_id_(-1),
+    blocks_(other.blocks_) {
+
+  // Empty occupied stacks state.
+  for (std::size_t x = 0; x < base_size; x++) {
+    for (std::size_t y = 0; y < base_size; y++) {
+      occupied_stacks_[x][y].fill(-1);
+    }
+  }
+}
+
+// Returns the number of blocks that move.
+int Tetris::gravity() {
   // Work through the blocks starting from the lowest first.
   // For each block, try to lower its position as much as possible without
   // overlapping with an already placed block.
@@ -100,11 +118,15 @@ void Tetris::gravity() {
     return false;
   };
 
+  int num_falling_blocks = 0;
   for (auto& b : blocks_) {
+    if (b.id == removed_id_) continue;
     bool hit = false;
+    bool will_move = false;
     while (!hit) {
       b.lower();
       hit = block_intersects(b);
+      will_move |= !hit;
     }
 
     b.raise();
@@ -113,7 +135,19 @@ void Tetris::gravity() {
     for (const auto& p : b.points) {
       occupied_stacks_[p.x][p.y][p.z] = b.id;
     }
+
+    num_falling_blocks += will_move;
   }
+
+  return num_falling_blocks;
+}
+
+void Tetris::remove_block(int id) {
+  Block b = blocks_[id];
+  for (const auto& p : b.points) {
+     occupied_stacks_[p.x][p.y][p.z] = -1;
+  }
+  removed_id_ = id;
 }
 
 int Tetris::count_safe_disintegrations() const {
@@ -159,6 +193,20 @@ int Tetris::count_safe_disintegrations() const {
   return count;
 }
 
+int Tetris::count_total_chain_reactions() const {
+  int count = 0;
+
+  // Try removing each block.
+  for (const auto& b : blocks_) {
+    Tetris next(*this);
+    next.remove_block(b.id);
+    int fallen = next.gravity();
+    count += fallen;
+  }
+
+  return count;
+}
+
 int main() {
   std::ifstream fs("input.txt");
   std::vector<Block> blocks;
@@ -184,11 +232,10 @@ int main() {
   Tetris t(blocks);
   t.gravity();
 
-//for (const auto& b : blocks) {
-//  std::cout << b.points[0].x << ", "<< b.points[0].y << ", " << b.points[0].z << " ~ "
-//            << b.points.back().x << ", "<< b.points.back().y << ", " << b.points.back().z << "\n";
-//}
-
-  int p1 = t.count_safe_disintegrations();
+  const int p1 = t.count_safe_disintegrations();
   std::cout << "P1: " << p1 << "\n";
+
+  // For part 2 find out how many blocks will fall after removing each one individually.
+  const int p2 = t.count_total_chain_reactions();
+  std::cout << "P2: " << p2 << "\n";
 }
