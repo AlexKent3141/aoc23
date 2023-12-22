@@ -58,7 +58,7 @@ public:
   int count_safe_disintegrations() const;
 
 private:
-  std::vector<Block> blocks_;
+  std::vector<Block>& blocks_;
 
   // 2D grid of stacks.
   // Each locations is either zero (unoccupied) or has a block id.
@@ -77,7 +77,7 @@ Tetris::Tetris(std::vector<Block>& blocks)
 
   // Allocate each block an ID based on its index.
   for (std::size_t id = 0; id < blocks.size(); id++) {
-    blocks_[id].id = id;
+    blocks[id].id = id;
   }
 
   // Fill the occupied stacks with zeros initially.
