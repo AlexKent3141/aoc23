@@ -131,7 +131,7 @@ int Tetris::count_safe_disintegrations() const {
     std::set<int> ids_above;
     for (const auto& p : b.points) {
       int id = occupied_stacks_[p.x][p.y][p.z];
-      if (id == -1) continue;
+      if (id == -1 || id == b.id) continue;
       ids_above.insert(id);
     }
 
@@ -143,7 +143,7 @@ int Tetris::count_safe_disintegrations() const {
       std::set<int> ids_below;
       for (const auto& p : b_above.points) {
         int id_below = occupied_stacks_[p.x][p.y][p.z];
-        if (id_below == -1) continue;
+        if (id_below == -1 || id_below == b_above.id) continue;
         ids_below.insert(id_below);
       }
 
@@ -153,7 +153,10 @@ int Tetris::count_safe_disintegrations() const {
       }
     }
 
-    count += !single_support;
+    if (!single_support) {
+      ++count;
+      std::cout << "Index: " << b.id << " can be removed\n";
+    }
   }
 
   return count;
