@@ -52,32 +52,32 @@ Block::Block(const Point& end1, const Point& end2) {
 
 class Tetris {
 public:
-  Tetris(std::vector<Block>&);
+  Tetris(const std::vector<Block>&);
 
   void gravity();
   int count_safe_disintegrations() const;
 
 private:
-  std::vector<Block>& blocks_;
+  std::vector<Block> blocks_;
 
   // 2D grid of stacks.
   // Each locations is either zero (unoccupied) or has a block id.
   std::array<std::array<std::array<int, max_height>, base_size>, base_size> occupied_stacks_;
 };
 
-Tetris::Tetris(std::vector<Block>& blocks)
+Tetris::Tetris(const std::vector<Block>& blocks)
   : blocks_(blocks) {
 
   std::sort(
-    blocks.begin(),
-    blocks.end(),
+    blocks_.begin(),
+    blocks_.end(),
     [] (const auto& b1, const auto& b2) {
       return b1.points[0].z < b2.points[0].z;
     });
 
   // Allocate each block an ID based on its index.
-  for (std::size_t id = 0; id < blocks.size(); id++) {
-    blocks[id].id = id;
+  for (std::size_t id = 0; id < blocks_.size(); id++) {
+    blocks_[id].id = id;
   }
 
   // Fill the occupied stacks with zeros initially.
@@ -153,10 +153,7 @@ int Tetris::count_safe_disintegrations() const {
       }
     }
 
-    if (!single_support) {
-      ++count;
-      std::cout << "Index: " << b.id << " can be removed\n";
-    }
+    count += !single_support;
   }
 
   return count;
@@ -187,10 +184,10 @@ int main() {
   Tetris t(blocks);
   t.gravity();
 
-  for (const auto& b : blocks) {
-    std::cout << b.points[0].x << ", "<< b.points[0].y << ", " << b.points[0].z << " ~ "
-              << b.points.back().x << ", "<< b.points.back().y << ", " << b.points.back().z << "\n";
-  }
+//for (const auto& b : blocks) {
+//  std::cout << b.points[0].x << ", "<< b.points[0].y << ", " << b.points[0].z << " ~ "
+//            << b.points.back().x << ", "<< b.points.back().y << ", " << b.points.back().z << "\n";
+//}
 
   int p1 = t.count_safe_disintegrations();
   std::cout << "P1: " << p1 << "\n";
